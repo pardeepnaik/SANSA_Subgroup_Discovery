@@ -53,7 +53,7 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
   def ruleConstruction()
   { 
 
-    colDataSetDF.show(40)
+  //  colDataSetDF.show(40)
     case class data(id: Int, location: String, occupation: String, counter: Int)
     val arrayMap:Array[Map[Int, String]] = Array(Map(0 -> "Doctor", 1 -> "Rome"),
         Map(0 -> "Doctor", 1 -> "Frankfurt", 2 -> "Deposit"),
@@ -81,16 +81,17 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
            val bestRule = getBestRule(sortArrayMapWRA)
            println("bestrule: " + bestRule)
            println("---------")
-          decreaseCount(bestRule)
-           //colDataSetDF.show(30)
+           decreaseCount(bestRule)
+    //     colDataSetDF.show(30)
          
            val removedSortArrayMapWRA = sortArrayMapWRA.slice(1, sortArrayMapWRA.length)
           // removedSortArrayMapWRA.foreach(x => {println(x)})
            sortArrayMapWRA = removedSortArrayMapWRA
            
            ruleSet += bestRule
-       //  println("bestRuleSet:")
-       //  ruleSet.foreach(x => {println(x)})
+           println("bestRuleSet:")
+           ruleSet.foreach(x => {println(x)})
+           println("---------")
            i=i+1
           
          } while(colDataSetDF == null || i < arrayMapWRA.length) 
@@ -110,20 +111,22 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
     //  WRADF.show(30)
      if (WRADF.count() == 0)
       {
-        println("WRADF null")
+      //  println("WRADF null")
         return
       }
-        println("WRADF not null")
+     //   println("WRADF not null")
       val removeWRADFRow = colDataSetDF.except(WRADF).coalesce(2) 
       //val commonRows = colDataSetDF.intersect(WRADF)
     //  xyz.show(40)
-      val newDF = spark.sqlContext.createDataFrame(WRADF.rdd.map(r=> {
+    /*  val newDF = spark.sqlContext.createDataFrame(WRADF.rdd.map(r=> {
         Row(r.get(0), r.get(1),
             r.get(2), r.get(3),
             r.get(4), r.get(5),
             r.get(6), r.get(7),
             r.get(8), decrementCounter(r))
-      }), WRADF.schema)
+      }), WRADF.schema) */
+      val decrementCounterUDF = udf((decrementCounter:Int) => decrementCounter-1) 
+      val newDF = WRADF.withColumn("counter", decrementCounterUDF($"counter"))
       colDataSetDF = removeWRADFRow.union(newDF).filter($"counter">=4).coalesce(2)
       
          //colDataSetDF.createOrReplaceTempView("tempTable")     
@@ -136,7 +139,7 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
   def decrementCounter(row: Row): Int ={
     
           row.get(9).toString.toInt-1
-  }
+  } 
   //rule construction method; 3 inputs: current rule, concept of ontology 'k', ontology index 'k' 
 /*  def construct(rule: Map[Int, String], concept: String, k: Int)
   {
