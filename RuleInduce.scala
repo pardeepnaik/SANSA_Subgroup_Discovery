@@ -17,6 +17,7 @@ import org.apache.spark.rdd.RDD
 import net.sansa_stack.rdf.spark.io.NTripleReader
 import org.apache.jena.graph.Triple
 import org.apache.spark.sql.functions._
+import scala.collection.mutable.ListBuffer
 
 class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataFrame, spark: SparkSession) extends Serializable
 {
@@ -54,54 +55,54 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
   { 
 
   //  colDataSetDF.show(40)
-    case class data(id: Int, location: String, occupation: String, counter: Int)
-    val arrayMap:Array[Map[Int, String]] = Array(Map(0 -> "Doctor", 1 -> "Rome"),
+  //  case class data(id: Int, location: String, occupation: String, counter: Int)
+    val ruleSet:ListBuffer[Map[Int, String]] = ListBuffer(Map(0 -> "Doctor", 1 -> "Rome"),
         Map(0 -> "Doctor", 1 -> "Frankfurt", 2 -> "Deposit"),
         Map(0 -> "Police", 2 -> "Gold"), 
         Map(0 -> "Police", 1 -> "Munich", 2 -> "Gold"))
    // for(i <- 0 to arrayMap.length)  { println(arrayMap(i).values)}
         
-    val arrayMapWRA:Array[Map[Map[Int, String], Double]] = Array(Map(arrayMap(0) -> 5.92),
-        Map(arrayMap(1) -> 4.14),
-        Map(arrayMap(2) -> 4.92),
-        Map(arrayMap(3) -> 1.04))
+    val ruleSetWRAcc:ListBuffer[Map[Map[Int, String], Double]] = ListBuffer(Map(ruleSet(0) -> 5.92),
+        Map(ruleSet(1) -> 4.14),
+        Map(ruleSet(2) -> 4.92),
+        Map(ruleSet(3) -> 1.04))
        //for(i <- 0 until arrayMapWRA.length)  { println(arrayMapWRA(i).keys) }
       // arrayMapWRA.foreach(x => {println(x.keys.head)})
          //reduce counter of all rows in dfSet from ColDataSETDF
         // })
         
-    var sortArrayMapWRA = arrayMapWRA.sortBy(x=>x.values.max).reverse
+    var sortRuleSetWRAcc = ruleSetWRAcc.sortBy(x=>x.values.max).reverse
   //  sortArrayMapWRA.foreach(x => {println(x)})
   //  sortArrayMapWRA.foreach(x => {println(x.keys.head)})
     var i = 0
-    val ruleSet = ArrayBuffer[Map[Int, String]]()
+    val bestRuleSet = ArrayBuffer[Map[Int, String]]()
         do
         {
           
-           val bestRule = getBestRule(sortArrayMapWRA)
+           val bestRule = getBestRule(sortRuleSetWRAcc)
            println("bestrule: " + bestRule)
            println("---------")
            decreaseCount(bestRule)
     //     colDataSetDF.show(30)
          
-           val removedSortArrayMapWRA = sortArrayMapWRA.slice(1, sortArrayMapWRA.length)
+           val tempList = sortRuleSetWRAcc.slice(1, sortRuleSetWRAcc.length)
           // removedSortArrayMapWRA.foreach(x => {println(x)})
-           sortArrayMapWRA = removedSortArrayMapWRA
+           sortRuleSetWRAcc = tempList
            
-           ruleSet += bestRule
+           bestRuleSet += bestRule
            println("bestRuleSet:")
-           ruleSet.foreach(x => {println(x)})
+           bestRuleSet.foreach(x => {println(x)})
            println("---------")
            i=i+1
           
-         } while(colDataSetDF == null || i < arrayMapWRA.length) 
+         } while(colDataSetDF == null || i < ruleSet.length) 
     }    
    
 
- def getBestRule(sortArrayMapWRA: Array[Map[Map[Int, String], Double]]): Map[Int, String] =
+ def getBestRule(sortRuleSetWRAcc: ListBuffer[Map[Map[Int, String], Double]]): Map[Int, String] =
   {
    
-     val bestRule = sortArrayMapWRA(0).keys.head
+     val bestRule = sortRuleSetWRAcc(0).keys.head
      bestRule 
   }
   def decreaseCount(bestRule: Map[Int, String]) 
@@ -136,10 +137,10 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
       // if(counter of some rows == 0) delete those rows
       // return ColDataSETDF
   }
-  def decrementCounter(row: Row): Int ={
+ /* def decrementCounter(row: Row): Int ={
     
           row.get(9).toString.toInt-1
-  } 
+  } */
   //rule construction method; 3 inputs: current rule, concept of ontology 'k', ontology index 'k' 
 /*  def construct(rule: Map[Int, String], concept: String, k: Int)
   {
@@ -174,13 +175,6 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
     var i = 0
     ontMap(k).foreach(f=> concepts.foreach(x => {filDF(i) = colDataSetDF.filter(col(f).like(x)); i+=1}))
     unionDF(filDF).distinct
-  }
-  
-  //to find the immediate child/children concept of concept
-  def children(concept: String, k: Int): Array[String] = 
-  {
-    //TO-DO
-    return null
   }
   
   def descendants(concept: String, k: Int): List[String] = 
