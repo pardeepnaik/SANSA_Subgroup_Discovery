@@ -54,28 +54,27 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
   def ruleConstruction()
   { 
 
-  //  colDataSetDF.show(40)
-  //  case class data(id: Int, location: String, occupation: String, counter: Int)
-    val ruleSet:ListBuffer[Map[Int, String]] = ListBuffer(Map(0 -> "Doctor", 1 -> "Rome"),
-        Map(0 -> "Doctor", 1 -> "Frankfurt", 2 -> "Deposit"),
-        Map(0 -> "Police", 2 -> "Gold"), 
-        Map(0 -> "Police", 1 -> "Munich", 2 -> "Gold"))
-   // for(i <- 0 to arrayMap.length)  { println(arrayMap(i).values)}
+//    val ruleSet:ListBuffer[Map[Int, String]] = ListBuffer(Map(0 -> "Doctor", 1 -> "Rome"),
+//        Map(0 -> "Doctor", 1 -> "Frankfurt", 2 -> "Deposit"),
+//        Map(0 -> "Police", 2 -> "Gold"), 
+//        Map(0 -> "Police", 1 -> "Munich", 2 -> "Gold"))
+//   // for(i <- 0 to arrayMap.length)  { println(arrayMap(i).values)}
+//     val ruleSetWRAcc:ListBuffer[(Map[Int, String], Double)] = ListBuffer((ruleSet(0), 5.92),
+//        (ruleSet(1), 4.14),
+//        (ruleSet(2), 4.92),
+//        (ruleSet(3), 1.04))
+//       //for(i <- 0 until arrayMapWRA.length)  { println(arrayMapWRA(i).keys) }
+//      // arrayMapWRA.foreach(x => {println(x.keys.head)})
+//         //reduce counter of all rows in dfSet from ColDataSETDF
+//        // })
+     val ruleSet:ListBuffer[Map[Int, String]] = ListBuffer(Map(0 -> "Doctor", 1 -> "Rome"), Map(0 -> "Doctor", 1 -> "Frankfurt", 2 -> "Deposit"), Map(0 -> "Police", 2 -> "Gold"), Map(0 -> "Police", 1 -> "Munich", 2 -> "Gold"))
+     val ruleSetWRAcc:ListBuffer[(Map[Int, String], Double)] = ListBuffer((Map(0 -> "Police"),1.0), (Map(0 -> "Doctor", 1 -> "Frankfurt", 2 -> "Deposit"),0.5), (Map(0 -> "Police", 2 -> "Gold"),0.0), (Map(0 -> "Police", 1 -> "Munich", 2 -> "Gold"),0.8))  
         
-    val ruleSetWRAcc:ListBuffer[Map[Map[Int, String], Double]] = ListBuffer(Map(ruleSet(0) -> 5.92),
-        Map(ruleSet(1) -> 4.14),
-        Map(ruleSet(2) -> 4.92),
-        Map(ruleSet(3) -> 1.04))
-       //for(i <- 0 until arrayMapWRA.length)  { println(arrayMapWRA(i).keys) }
-      // arrayMapWRA.foreach(x => {println(x.keys.head)})
-         //reduce counter of all rows in dfSet from ColDataSETDF
-        // })
-        
-    var sortRuleSetWRAcc = ruleSetWRAcc.sortBy(x=>x.values.max).reverse
-  //  sortArrayMapWRA.foreach(x => {println(x)})
+    var sortRuleSetWRAcc = ruleSetWRAcc.sortWith(_._2 > _._2)
+    sortRuleSetWRAcc.foreach(x => {println(x)})
   //  sortArrayMapWRA.foreach(x => {println(x.keys.head)})
     var i = 0
-    val bestRuleSet = ArrayBuffer[Map[Int, String]]()
+    val bestRuleSet = ListBuffer[Map[Int, String]]()
         do
         {
           
@@ -83,7 +82,7 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
            println("bestrule: " + bestRule)
            println("---------")
            decreaseCount(bestRule)
-    //     colDataSetDF.show(30)
+           colDataSetDF.show(30)
          
            val tempList = sortRuleSetWRAcc.slice(1, sortRuleSetWRAcc.length)
           // removedSortArrayMapWRA.foreach(x => {println(x)})
@@ -99,24 +98,24 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
     }    
    
 
- def getBestRule(sortRuleSetWRAcc: ListBuffer[Map[Map[Int, String], Double]]): Map[Int, String] =
+ def getBestRule(sortRuleSetWRAcc: ListBuffer[(Map[Int, String], Double)]): Map[Int, String] =
   {
    
-     val bestRule = sortRuleSetWRAcc(0).keys.head
+     val bestRule = sortRuleSetWRAcc(0)._1
      bestRule 
   }
   def decreaseCount(bestRule: Map[Int, String]) 
   {
       import spark.implicits._
       val WRADF = ruleSetDF(bestRule, colDataSetDF)
-    //  WRADF.show(30)
+      WRADF.show(30)
      if (WRADF.count() == 0)
       {
       //  println("WRADF null")
         return
       }
      //   println("WRADF not null")
-      val removeWRADFRow = colDataSetDF.except(WRADF).coalesce(2) 
+      val removeWRADFRow = colDataSetDF.except(WRADF).coalesce(2)
       //val commonRows = colDataSetDF.intersect(WRADF)
     //  xyz.show(40)
     /*  val newDF = spark.sqlContext.createDataFrame(WRADF.rdd.map(r=> {
@@ -128,7 +127,8 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
       }), WRADF.schema) */
       val decrementCounterUDF = udf((decrementCounter:Int) => decrementCounter-1) 
       val newDF = WRADF.withColumn("counter", decrementCounterUDF($"counter"))
-      colDataSetDF = removeWRADFRow.union(newDF).filter($"counter">=4).coalesce(2)
+     // newDF.show(30)
+      colDataSetDF = removeWRADFRow.union(newDF).filter($"counter">=1).coalesce(2)
       
          //colDataSetDF.createOrReplaceTempView("tempTable")     
       //var tempTable1 = spark.sqlContext.sql("Select id, occupation, location	FROM tempTable WHERE id = 6")  
@@ -158,8 +158,8 @@ class RuleInduce(dataSetDF: DataFrame, ontRDD: Array[RDD[Triple]], dictDF: DataF
   {
     //TO-DO
     val filDF: Array[DataFrame] = new Array[DataFrame](rule.size)
-    rule.zipWithIndex.foreach({case(r, i) => filDF(i) = conceptSetDF(r._2, r._1, colDataSetDF)})
-      val ruleDF = intersectionDF(filDF).cache
+    rule.zipWithIndex.foreach({case(r, i) => filDF(i) = conceptSetDF(r._2, r._1, colDataSetDF).repartition(4)})
+      val ruleDF = intersectionDF(filDF).coalesce(2).cache()
  //   ruleCnd(rule) = ruleDF.count
  //   ruleCndC(rule) = ruleDF.filter(col(sgCol).like(sgClass)).count
       ruleDF
