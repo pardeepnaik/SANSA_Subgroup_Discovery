@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////
 // Authors: Livin Natious, Pardeep Kumar Naik //
-// Created on: 01/12/2017                     //
+// Created on: 12/12/2017                     //
 // Version: 0.0.1                             //
 // Efficient Subgroup discovery using Spark   //
 ////////////////////////////////////////////////
@@ -13,13 +13,19 @@ import scala.collection.immutable.Map
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.rdd.RDD
-import net.sansa_stack.rdf.spark.io.NTripleReader
+import _root_.net.sansa_stack.rdf.spark.io.NTripleReader
 import org.apache.jena.graph.Triple
 import org.apache.spark.sql.functions._
 
 object SgDiscovery {
   
   def main(args: Array[String]) = {
+    
+    
+    println("====================================================")
+    println("|     Efficient Subgroup Discovery using Spark     |")
+    println("====================================================")
+    
     
     //initializing the spark session locally
     val spark = SparkSession.builder
@@ -37,28 +43,15 @@ object SgDiscovery {
          .option("mode", "DROPMALFORMED")
          .option("delimiter", "\t")
          .load("src/main/resources/SG/bank.csv")
-      //    dataSetDF.show()
-          
+
     val ontRDD:Array[RDD[Triple]] = new Array[RDD[Triple]](args.length);
     
     //load ontologies into different array elements
     args.zipWithIndex.foreach({
       case(arg, i) => ontRDD(i) = NTripleReader.load(spark, URI.create(arg)).filter(f => {f.getPredicate.toString.contains("subClassOf")})
       })
-      
-    //print ontology array
-    //ontRDD.foreach(x=>if(x!=null){
-    //  x.take(5).foreach(x=>println(x.getSubject))
-    //  })
- 
-    val bigRDD = sc.union(ontRDD).distinct
-    val dictRDD = bigRDD.map(f => f.getSubject.toString).union(bigRDD.map(f => f.getObject.toString)).distinct
-    
-    //Create a uri to predicate dictionary data frame dictDF
-    val dictDF = dictRDD.map(f=>(f, f.split("#").last)).toDF("uri","predicate")
-    //dictDF.show(false)
-    
-    val ruleInduce = new RuleInduce1(dataSetDF, ontRDD, dictDF, spark)
+
+    val ruleInduce = new RuleInduce(dataSetDF, ontRDD,  spark)
     
     ruleInduce.run()
     

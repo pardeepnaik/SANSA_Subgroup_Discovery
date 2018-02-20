@@ -3,7 +3,7 @@ package net.sansa_stack.template.spark.rdf
 import java.net.URI
 import scala.collection.mutable
 import org.apache.spark.sql.SparkSession
-import net.sansa_stack.rdf.spark.io.NTripleReader
+import _root_.net.sansa_stack.rdf.spark.io.NTripleReader
 import org.apache.spark.ml._
 import org.apache.spark.ml.feature._
 import org.apache.spark.ml.classification.LogisticRegression

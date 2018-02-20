@@ -1,4 +1,5 @@
-////////////////////////////////////////////////
+package net.sansa_stack.template.spark.rdf
+  ////////////////////////////////////////////////
 // Authors: Livin Natious, Pardeep Kumar Naik //
 // Created on: 12/12/2017                     //
 // Version: 0.0.1                             //
@@ -14,7 +15,7 @@ import scala.collection.mutable.ListBuffer
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.rdd.RDD
-import net.sansa_stack.rdf.spark.io.NTripleReader
+import _root_.net.sansa_stack.rdf.spark.io.NTripleReader
 import org.apache.jena.graph.Triple
 import org.apache.spark.sql.functions._
 
